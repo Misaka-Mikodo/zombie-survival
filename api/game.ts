@@ -1,7 +1,6 @@
 // Vercel API路由 - 游戏状态
-import { VercelRequest, VercelResponse } from '@vercel/node';
+// 简化版，不依赖@vercel/node
 
-// 内存存储
 const gameState = {
   players: new Map(),
   zombies: new Map(),
@@ -24,7 +23,7 @@ for (let i = 0; i < 50; i++) {
   });
 }
 
-export default function handler(req: VercelRequest, res: VercelResponse) {
+export default function handler(req: any, res: any) {
   const { method } = req;
   
   // CORS
@@ -37,10 +36,9 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
   }
   
   if (method === 'GET') {
-    // 获取游戏状态 (轮询)
-    const playerId = req.query.playerId as string;
-    const px = parseInt(req.query.x as string);
-    const py = parseInt(req.query.y as string);
+    const playerId = req.query.playerId;
+    const px = parseInt(req.query.x);
+    const py = parseInt(req.query.y);
     
     if (playerId && !isNaN(px) && !isNaN(py)) {
       const player = gameState.players.get(playerId);
@@ -62,7 +60,8 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
   }
   
   if (method === 'POST') {
-    const { action, ...data } = req.body;
+    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    const { action, ...data } = body;
     
     if (action === 'join') {
       const playerId = 'player_' + Date.now();
@@ -87,7 +86,7 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
     
     if (action === 'harvest') {
       const { playerId, resourceId } = data;
-      const resource = gameState.resources.find(r => r.id === resourceId);
+      const resource = gameState.resources.find((r: any) => r.id === resourceId);
       
       if (resource && resource.amount > 0) {
         resource.amount--;
