@@ -6,8 +6,10 @@ export class GameSocketClient {
   private reconnectAttempts: number = 0;
   private maxReconnectAttempts: number = 5;
 
-  connect(url: string = 'http://localhost:3001'): void {
-    this.socket = io(url, {
+  connect(url?: string): void {
+    // 使用环境变量或默认URL
+    const serverUrl = url || import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
+    this.socket = io(serverUrl, {
       transports: ['websocket'],
       reconnection: true,
       reconnectionAttempts: this.maxReconnectAttempts,

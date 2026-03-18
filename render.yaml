@@ -1,0 +1,16 @@
+# Render部署配置
+# 1. 推送代码到GitHub
+# 2. 打开 https://render.com
+# 3. New -> Web Service
+# 4. 连接到你的GitHub仓库
+# 5. 设置:
+#    - Build Command: npm install
+#    - Start Command: npm start
+
+services:
+  - type: web
+    name: zombie-survival-server
+    env: node
+    region: oregon
+    buildCommand: npm install
+    startCommand: npm start
