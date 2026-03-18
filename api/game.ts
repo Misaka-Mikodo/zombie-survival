@@ -1,36 +1,42 @@
 // Vercel API路由 - 游戏状态
-const gameState = {
-  players: new Map(),
-  zombies: new Map(),
-  buildings: new Map(),
-  resources: [] as any[],
-  tick: 0,
-  dayTime: 12,
-  phase: 'day',
-  dayNumber: 1,
-  wave: 0,
-  lastWaveTime: Date.now()
-};
+// 使用全局变量保持状态
+let gameState: any = null;
 
-const TYPES = ['wood', 'stone', 'metal', 'food', 'herb'];
-const ZOMBIE_TYPES = ['normal', 'fast', 'giant', 'crawler'];
-const MAP_WIDTH = 2000;
-const MAP_HEIGHT = 2000;
-
-// 初始化资源
-for (let i = 0; i < 80; i++) {
-  gameState.resources.push({
-    id: `resource_${i}`,
-    type: TYPES[Math.floor(Math.random() * TYPES.length)],
-    x: Math.floor(Math.random() * 1800 + 100),
-    y: Math.floor(Math.random() * 1800 + 100),
-    amount: 3
-  });
+function initGameState() {
+  if (gameState) return;
+  
+  gameState = {
+    players: new Map(),
+    zombies: new Map(),
+    buildings: new Map(),
+    resources: [],
+    tick: 0,
+    dayTime: 12,
+    phase: 'day',
+    dayNumber: 1,
+    wave: 0,
+    lastWaveTime: Date.now()
+  };
+  
+  const TYPES = ['wood', 'stone', 'metal', 'food', 'herb'];
+  
+  // 初始化资源
+  for (let i = 0; i < 80; i++) {
+    gameState.resources.push({
+      id: `resource_${i}`,
+      type: TYPES[i % TYPES.length], // 循环使用类型
+      x: Math.floor(Math.random() * 1800 + 100),
+      y: Math.floor(Math.random() * 1800 + 100),
+      amount: 3
+    });
+  }
 }
 
 // 更新昼夜循环
 function updateDayNight() {
-  gameState.dayTime += 0.05; // 每请求增加时间
+  if (!gameState) return;
+  
+  gameState.dayTime += 0.1; // 增加时间
   
   if (gameState.dayTime >= 24) {
     gameState.dayTime = 6;
@@ -42,29 +48,28 @@ function updateDayNight() {
     gameState.phase = 'twilight';
   } else if (gameState.dayTime >= 20 || gameState.dayTime < 6) {
     gameState.phase = 'night';
-    // 夜晚生成僵尸波次
-    if (Date.now() - gameState.lastWaveTime > 15000 && gameState.wave < gameState.dayNumber * 2) {
+    // 夜晚生成僵尸
+    if (Date.now() - gameState.lastWaveTime > 10000 && gameState.wave < 10) {
       spawnZombieWave();
       gameState.lastWaveTime = Date.now();
     }
   } else {
     gameState.phase = 'day';
-    // 白天僵尸逐渐消失
-    if (gameState.zombies.size > 0 && Math.random() < 0.1) {
-      const keys = Array.from(gameState.zombies.keys());
-      gameState.zombies.delete(keys[0]);
-    }
   }
 }
 
-// 生成僵尸波次
 function spawnZombieWave() {
+  if (!gameState) return;
+  
   gameState.wave++;
   const count = 3 + gameState.wave;
+  const ZOMBIE_TYPES = ['normal', 'fast', 'giant', 'crawler'];
+  const MAP_WIDTH = 2000;
+  const MAP_HEIGHT = 2000;
   
   for (let i = 0; i < count; i++) {
     const side = Math.floor(Math.random() * 4);
-    let x, y;
+    let x = 0, y = 0;
     switch (side) {
       case 0: x = Math.random() * MAP_WIDTH; y = -30; break;
       case 1: x = MAP_WIDTH + 30; y = Math.random() * MAP_HEIGHT; break;
@@ -87,6 +92,9 @@ function spawnZombieWave() {
 }
 
 export default function handler(req: any, res: any) {
+  // 初始化
+  initGameState();
+  
   const { method } = req;
   
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -95,8 +103,11 @@ export default function handler(req: any, res: any) {
   
   if (method === 'OPTIONS') return res.status(200).end();
   
-  // 更新昼夜系统
+  // 更新昼夜
   updateDayNight();
+  
+  const MAP_WIDTH = 2000;
+  const MAP_HEIGHT = 2000;
   
   if (method === 'GET') {
     const playerId = req.query.playerId;
@@ -119,7 +130,7 @@ export default function handler(req: any, res: any) {
       wave: gameState.wave,
       players: Array.from(gameState.players.values()),
       zombies: Array.from(gameState.zombies.values()),
-      resources: gameState.resources.filter(r => r.amount > 0), // 只返回还有资源的
+      resources: gameState.resources.filter((r: any) => r.amount > 0),
       buildings: Array.from(gameState.buildings.values())
     });
   }
@@ -151,17 +162,10 @@ export default function handler(req: any, res: any) {
     
     if (action === 'harvest') {
       const { playerId, resourceId } = data;
-      const resourceIndex = gameState.resources.findIndex(r => r.id === resourceId);
+      const resourceIndex = gameState.resources.findIndex((r: any) => r.id === resourceId);
       
       if (resourceIndex >= 0 && gameState.resources[resourceIndex].amount > 0) {
         gameState.resources[resourceIndex].amount--;
-        
-        const player = gameState.players.get(playerId);
-        if (player) {
-          const type = gameState.resources[resourceIndex].type;
-          player.inventory = player.inventory || {};
-          player.inventory[type] = (player.inventory[type] || 0) + 1;
-        }
         
         return res.json({ 
           success: true, 
@@ -186,10 +190,6 @@ export default function handler(req: any, res: any) {
         return res.json({ killed: false, damage: damage || 10, health: zombie.health });
       }
       return res.json({ error: 'Target not found' });
-    }
-    
-    if (action === 'craft') {
-      return res.json({ success: true });
     }
   }
   
