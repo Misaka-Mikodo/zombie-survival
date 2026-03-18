@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>僵尸生存者 - Zombie Survival</title>
+  <title>🧟 僵尸生存者</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { 
@@ -11,68 +11,322 @@
       color: #fff;
       font-family: 'Segoe UI', sans-serif;
       overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
     }
-    .login-screen {
+    #game {
+      position: relative;
+      border: 2px solid #4ade80;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+      background: #1a1a2e;
+    }
+    #login {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      height: 100vh;
       background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
     }
-    .login-screen h1 {
-      font-size: 3rem;
-      margin-bottom: 2rem;
+    #login h1 {
+      font-size: 2.5rem;
+      margin-bottom: 1.5rem;
       color: #4ade80;
       text-shadow: 0 0 20px rgba(74, 222, 128, 0.5);
     }
-    .login-screen input {
-      padding: 1rem 2rem;
-      font-size: 1.2rem;
+    #login input {
+      padding: 0.8rem 1.5rem;
+      font-size: 1.1rem;
       border: 2px solid #4ade80;
       border-radius: 8px;
       background: rgba(0,0,0,0.3);
       color: #fff;
       margin-bottom: 1rem;
       outline: none;
+      width: 200px;
+      text-align: center;
     }
-    .login-screen button {
-      padding: 1rem 3rem;
-      font-size: 1.2rem;
+    #login input::placeholder { color: #666; }
+    #login button {
+      padding: 0.8rem 2rem;
+      font-size: 1.1rem;
       background: #4ade80;
       color: #000;
       border: none;
       border-radius: 8px;
       cursor: pointer;
       font-weight: bold;
-      transition: transform 0.2s;
     }
-    .login-screen button:hover {
-      transform: scale(1.05);
-    }
-    .game-container {
-      position: relative;
-    }
-    .game-container canvas {
-      display: block;
-      background: #1a1a2e;
-    }
-    .hud {
+    #login button:hover { transform: scale(1.05); }
+    #hud {
       position: absolute;
       top: 10px;
       left: 10px;
       right: 10px;
       display: flex;
       justify-content: space-between;
-      padding: 10px 20px;
-      background: rgba(0,0,0,0.5);
-      border-radius: 8px;
+      padding: 8px 15px;
+      background: rgba(0,0,0,0.6);
+      border-radius: 5px;
       font-size: 14px;
     }
+    #error {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      right: 10px;
+      padding: 10px;
+      background: rgba(255,0,0,0.3);
+      border-radius: 5px;
+      text-align: center;
+      display: none;
+    }
+    .hidden { display: none !important; }
   </style>
-  <script type="module" crossorigin src="/assets/index-BekSfqml.js"></script>
 </head>
 <body>
-  <div id="root"></div>
+  <div id="game">
+    <canvas id="canvas" width="800" height="600"></canvas>
+    
+    <!-- 登录界面 -->
+    <div id="login">
+      <h1>🧟 僵尸生存者</h1>
+      <input type="text" id="nameInput" placeholder="输入你的名字" />
+      <button id="joinBtn">开始游戏</button>
+    </div>
+    
+    <!-- HUD -->
+    <div id="hud" class="hidden">
+      <span id="time">🕐 12:00</span>
+      <span id="phase">☀️ 白天</span>
+      <span id="players">👥 0 玩家</span>
+    </div>
+    
+    <!-- 错误提示 -->
+    <div id="error"></div>
+  </div>
+
+  <script>
+    // 配置
+    const API_BASE = '';
+    const CANVAS_WIDTH = 800;
+    const CANVAS_HEIGHT = 600;
+    const MAP_WIDTH = 2000;
+    const MAP_HEIGHT = 2000;
+    
+    // 游戏状态
+    let playerId = null;
+    let playerName = '';
+    let playerX = 1000;
+    let playerY = 1000;
+    let gameState = null;
+    let polling = null;
+    
+    // DOM元素
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const loginDiv = document.getElementById('login');
+    const hudDiv = document.getElementById('hud');
+    const nameInput = document.getElementById('nameInput');
+    const joinBtn = document.getElementById('joinBtn');
+    const timeSpan = document.getElementById('time');
+    const phaseSpan = document.getElementById('phase');
+    const playersSpan = document.getElementById('players');
+    const errorDiv = document.getElementById('error');
+    
+    // 显示错误
+    function showError(msg) {
+      errorDiv.textContent = msg;
+      errorDiv.style.display = 'block';
+      setTimeout(() => errorDiv.style.display = 'none', 5000);
+    }
+    
+    // 加入游戏
+    async function joinGame() {
+      const name = nameInput.value.trim();
+      if (!name) {
+        showError('请输入名字');
+        return;
+      }
+      
+      try {
+        const res = await fetch(API_BASE + '/api/game', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'join', name })
+        });
+        
+        if (!res.ok) throw new Error('加入失败');
+        
+        const data = await res.json();
+        playerId = data.playerId;
+        playerName = name;
+        playerX = data.player.x;
+        playerY = data.player.y;
+        
+        // 隐藏登录，显示游戏
+        loginDiv.classList.add('hidden');
+        hudDiv.classList.remove('hidden');
+        
+        // 开始轮询
+        startPolling();
+      } catch (e) {
+        console.error(e);
+        showError('连接失败: ' + e.message);
+      }
+    }
+    
+    // 开始轮询
+    function startPolling() {
+      polling = setInterval(async () => {
+        try {
+          const res = await fetch(API_BASE + '/api/game?playerId=' + playerId + '&x=' + playerX + '&y=' + playerY);
+          if (!res.ok) return;
+          gameState = await res.json();
+          render();
+          updateHUD();
+        } catch (e) {
+          console.error(e);
+        }
+      }, 1000);
+    }
+    
+    // 更新HUD
+    function updateHUD() {
+      if (!gameState) return;
+      const hour = Math.floor(gameState.dayTime);
+      timeSpan.textContent = '🕐 ' + hour + ':00';
+      phaseSpan.textContent = gameState.phase === 'day' ? '☀️ 白天' : 
+                             gameState.phase === 'twilight' ? '🌆 黄昏' : '🧟 夜晚';
+      playersSpan.textContent = '👥 ' + gameState.players.length + ' 玩家';
+    }
+    
+    // 渲染
+    function render() {
+      // 清空
+      ctx.fillStyle = '#1a1a2e';
+      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+      
+      // 相机位置
+      const camX = playerX - CANVAS_WIDTH / 2;
+      const camY = playerY - CANVAS_HEIGHT / 2;
+      
+      // 绘制网格
+      ctx.strokeStyle = '#333';
+      ctx.lineWidth = 1;
+      for (let x = -camX % 32; x < CANVAS_WIDTH; x += 32) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, CANVAS_HEIGHT);
+        ctx.stroke();
+      }
+      for (let y = -camY % 32; y < CANVAS_HEIGHT; y += 32) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(CANVAS_WIDTH, y);
+        ctx.stroke();
+      }
+      
+      if (!gameState) return;
+      
+      // 绘制资源
+      const colors = {
+        wood: '#92400e',
+        stone: '#6b7280', 
+        metal: '#475569',
+        food: '#dc2626',
+        herb: '#16a34a'
+      };
+      
+      for (const r of gameState.resources) {
+        const sx = r.x - camX;
+        const sy = r.y - camY;
+        if (sx < -32 || sx > CANVAS_WIDTH + 32 || sy < -32 || sy > CANVAS_HEIGHT + 32) continue;
+        
+        ctx.fillStyle = colors[r.type] || '#888';
+        ctx.fillRect(sx - 10, sy - 10, 20, 20);
+      }
+      
+      // 绘制玩家
+      for (const p of gameState.players) {
+        const sx = p.x - camX;
+        const sy = p.y - camY;
+        
+        // 身体
+        ctx.fillStyle = p.id === playerId ? '#4ade80' : '#22c55e';
+        ctx.beginPath();
+        ctx.arc(sx, sy, 16, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // 名字
+        ctx.fillStyle = '#fff';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(p.name, sx, sy - 25);
+        
+        // 血条
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(sx - 20, sy - 20, 40 * (p.health / 100), 4);
+      }
+      
+      // 绘制僵尸
+      const zombieColors = {
+        normal: '#84cc16',
+        fast: '#f59e0b',
+        giant: '#dc2626',
+        crawler: '#8b5cf6'
+      };
+      
+      for (const z of gameState.zombies) {
+        const sx = z.x - camX;
+        const sy = z.y - camY;
+        
+        ctx.fillStyle = zombieColors[z.type] || '#84cc16';
+        ctx.beginPath();
+        ctx.arc(sx, sy, z.type === 'giant' ? 24 : 14, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // 血条
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(sx - 15, sy - 20, 30 * (z.health / 100), 3);
+      }
+    }
+    
+    // 键盘控制
+    const keys = {};
+    document.addEventListener('keydown', e => {
+      keys[e.key] = true;
+      movePlayer();
+    });
+    document.addEventListener('keyup', e => keys[e.key] = false);
+    
+    function movePlayer() {
+      const speed = 5;
+      let dx = 0, dy = 0;
+      
+      if (keys['w'] || keys['ArrowUp']) dy -= speed;
+      if (keys['s'] || keys['ArrowDown']) dy += speed;
+      if (keys['a'] || keys['ArrowLeft']) dx -= speed;
+      if (keys['d'] || keys['ArrowRight']) dx += speed;
+      
+      if (dx !== 0 || dy !== 0) {
+        playerX = Math.max(0, Math.min(MAP_WIDTH, playerX + dx));
+        playerY = Math.max(0, Math.min(MAP_HEIGHT, playerY + dy));
+      }
+    }
+    
+    // 事件监听
+    joinBtn.addEventListener('click', joinGame);
+    nameInput.addEventListener('keypress', e => {
+      if (e.key === 'Enter') joinGame();
+    });
+  </script>
 </body>
 </html>
