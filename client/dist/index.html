@@ -321,6 +321,9 @@
         if (dist < 35 && r.amount > 0) {
           inventory[r.type] = (inventory[r.type] || 0) + 1;
           r.amount--;
+          if (r.amount <= 0) {
+            gameState.resources = gameState.resources.filter(res => res.id !== r.id);
+          }
           updateInventoryUI();
           fetch(API_BASE + '/api/game', {
             method: 'POST',
@@ -386,6 +389,7 @@
       for (const r of gameState.resources) {
         const sx = r.x - camX, sy = r.y - camY;
         if (sx < -30 || sx > W + 30 || sy < -30 || sy > H + 30) continue;
+        if (r.amount <= 0) continue;
         ctx.fillStyle = RES_COLORS[r.type] || '#888';
         ctx.fillRect(sx - 10, sy - 10, 20, 20);
         ctx.font = '12px Arial';
