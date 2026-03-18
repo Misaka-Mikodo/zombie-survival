@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>僵尸生存者 - Zombie Survival</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: #0f0f1a; 
+      color: #fff;
+      font-family: 'Segoe UI', sans-serif;
+      overflow: hidden;
+    }
+    .login-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    }
+    .login-screen h1 {
+      font-size: 3rem;
+      margin-bottom: 2rem;
+      color: #4ade80;
+      text-shadow: 0 0 20px rgba(74, 222, 128, 0.5);
+    }
+    .login-screen input {
+      padding: 1rem 2rem;
+      font-size: 1.2rem;
+      border: 2px solid #4ade80;
+      border-radius: 8px;
+      background: rgba(0,0,0,0.3);
+      color: #fff;
+      margin-bottom: 1rem;
+      outline: none;
+    }
+    .login-screen button {
+      padding: 1rem 3rem;
+      font-size: 1.2rem;
+      background: #4ade80;
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: transform 0.2s;
+    }
+    .login-screen button:hover {
+      transform: scale(1.05);
+    }
+    .game-container {
+      position: relative;
+    }
+    .game-container canvas {
+      display: block;
+      background: #1a1a2e;
+    }
+    .hud {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 20px;
+      background: rgba(0,0,0,0.5);
+      border-radius: 8px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>
