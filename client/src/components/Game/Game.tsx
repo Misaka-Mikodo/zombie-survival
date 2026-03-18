@@ -1,22 +1,20 @@
 // 游戏主组件
 import React, { useEffect, useRef, useState } from 'react';
 import { GameRenderer } from '../../game/renderer/GameRenderer';
-import { GameSocketClient } from '../../game/network/SocketClient';
+import { GameAPIClient } from '../../game/network/GameAPIClient';
 import { useGameStore } from '../../stores/gameStore';
 
 export const Game: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<GameRenderer | null>(null);
-  const clientRef = useRef<GameSocketClient | null>(null);
+  const clientRef = useRef<GameAPIClient | null>(null);
+  const playerPosRef = useRef({ x: 1000, y: 1000 });
   
   const [playerName, setPlayerName] = useState('');
   const [joined, setJoined] = useState(false);
   
   const { 
-    connected, 
-    setConnected, 
-    updateWorldState, 
-    setLocalPlayerId,
+    updateWorldState,
     players,
     dayTime,
     phase 
@@ -26,32 +24,26 @@ export const Game: React.FC = () => {
     if (!canvasRef.current) return;
     
     rendererRef.current = new GameRenderer(canvasRef.current);
-    clientRef.current = new GameSocketClient();
+    clientRef.current = new GameAPIClient();
     
-    const client = clientRef.current;
-    const renderer = rendererRef.current;
-    
-    client.connect();
-    
-    client.on('connect', () => setConnected(true));
-    client.on('disconnect', () => setConnected(false));
-    client.on('joined', (data) => {
-      setLocalPlayerId(data.playerId);
-      setJoined(true);
-    });
-    client.on('worldState', (state) => {
+    // 开始轮询游戏状态
+    clientRef.current.startPolling((state) => {
       updateWorldState(state);
-      renderer.render(state);
-    });
+      if (rendererRef.current) {
+        rendererRef.current.render(state);
+      }
+    }, 1000);
     
     return () => {
-      client.disconnect();
+      clientRef.current?.stopPolling();
     };
   }, []);
 
-  const handleJoin = () => {
+  const handleJoin = async () => {
     if (playerName && clientRef.current) {
-      clientRef.current.join(playerName);
+      const data = await clientRef.current.join(playerName);
+      setJoined(true);
+      playerPosRef.current = { x: 1000, y: 1000 };
     }
   };
 
@@ -69,22 +61,22 @@ export const Game: React.FC = () => {
     }
     
     if (dx !== 0 || dy !== 0) {
-      const player = players.find(p => p.id === useGameStore.getState().localPlayerId);
-      if (player) {
-        clientRef.current.move(player.x + dx, player.y + dy);
-      }
+      playerPosRef.current.x += dx;
+      playerPosRef.current.y += dy;
+      // 发送移动请求
+      clientRef.current.move(playerPosRef.current.x, playerPosRef.current.y);
     }
   };
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [joined, players]);
+  }, [joined]);
 
   if (!joined) {
     return (
       <div className="login-screen">
-        <h1>僵尸生存者</h1>
+        <h1>🧟 僵尸生存者</h1>
         <input
           type="text"
           value={playerName}
