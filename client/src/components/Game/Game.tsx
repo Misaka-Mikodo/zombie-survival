@@ -9,6 +9,7 @@ export const Game: React.FC = () => {
   const rendererRef = useRef<GameRenderer | null>(null);
   const clientRef = useRef<GameAPIClient | null>(null);
   const playerPosRef = useRef({ x: 1000, y: 1000 });
+  const [error, setError] = useState('');
   
   const [playerName, setPlayerName] = useState('');
   const [joined, setJoined] = useState(false);
@@ -23,16 +24,24 @@ export const Game: React.FC = () => {
   useEffect(() => {
     if (!canvasRef.current) return;
     
-    rendererRef.current = new GameRenderer(canvasRef.current);
-    clientRef.current = new GameAPIClient();
-    
-    // 开始轮询游戏状态
-    clientRef.current.startPolling((state) => {
-      updateWorldState(state);
-      if (rendererRef.current) {
-        rendererRef.current.render(state);
-      }
-    }, 1000);
+    try {
+      rendererRef.current = new GameRenderer(canvasRef.current);
+      clientRef.current = new GameAPIClient();
+      
+      console.log('Client initialized, starting polling...');
+      
+      // 开始轮询游戏状态
+      clientRef.current.startPolling((state) => {
+        console.log('State received:', state);
+        updateWorldState(state);
+        if (rendererRef.current) {
+          rendererRef.current.render(state);
+        }
+      }, 1000);
+    } catch (e) {
+      console.error('Init error:', e);
+      setError(String(e));
+    }
     
     return () => {
       clientRef.current?.stopPolling();
@@ -40,10 +49,21 @@ export const Game: React.FC = () => {
   }, []);
 
   const handleJoin = async () => {
-    if (playerName && clientRef.current) {
-      const data = await clientRef.current.join(playerName);
+    if (!playerName.trim()) {
+      setError('请输入名字');
+      return;
+    }
+    
+    try {
+      console.log('Joining with name:', playerName);
+      const data = await clientRef.current?.join(playerName);
+      console.log('Join result:', data);
       setJoined(true);
       playerPosRef.current = { x: 1000, y: 1000 };
+      setError('');
+    } catch (e) {
+      console.error('Join error:', e);
+      setError('加入失败: ' + String(e));
     }
   };
 
@@ -63,8 +83,7 @@ export const Game: React.FC = () => {
     if (dx !== 0 || dy !== 0) {
       playerPosRef.current.x += dx;
       playerPosRef.current.y += dy;
-      // 发送移动请求
-      clientRef.current.move(playerPosRef.current.x, playerPosRef.current.y);
+      clientRef.current?.move(playerPosRef.current.x, playerPosRef.current.y);
     }
   };
 
@@ -84,6 +103,7 @@ export const Game: React.FC = () => {
           placeholder="输入你的名字"
         />
         <button onClick={handleJoin}>开始游戏</button>
+        {error && <p style={{color: 'red', marginTop: '10px'}}>{error}</p>}
       </div>
     );
   }
