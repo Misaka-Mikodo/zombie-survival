@@ -25,6 +25,7 @@
     canvas {
       display: block;
       background: #1a1a2e;
+      cursor: crosshair;
     }
     #login {
       position: absolute;
@@ -39,7 +40,6 @@
       font-size: 2.5rem;
       margin-bottom: 1.5rem;
       color: #4ade80;
-      text-shadow: 0 0 20px rgba(74, 222, 128, 0.5);
     }
     #login input {
       padding: 0.8rem 1.5rem;
@@ -53,7 +53,6 @@
       width: 200px;
       text-align: center;
     }
-    #login input::placeholder { color: #666; }
     #login button {
       padding: 0.8rem 2rem;
       font-size: 1.1rem;
@@ -64,7 +63,6 @@
       cursor: pointer;
       font-weight: bold;
     }
-    #login button:hover { transform: scale(1.05); }
     #hud {
       position: absolute;
       top: 10px;
@@ -73,20 +71,55 @@
       display: flex;
       justify-content: space-between;
       padding: 8px 15px;
-      background: rgba(0,0,0,0.6);
+      background: rgba(0,0,0,0.7);
       border-radius: 5px;
       font-size: 14px;
     }
-    #error {
+    #inventory {
       position: absolute;
       bottom: 10px;
       left: 10px;
-      right: 10px;
+      background: rgba(0,0,0,0.7);
       padding: 10px;
-      background: rgba(255,0,0,0.3);
       border-radius: 5px;
-      text-align: center;
+      font-size: 12px;
+      max-width: 200px;
+    }
+    #inventory h3 { margin-bottom: 5px; color: #4ade80; }
+    #crafting {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      max-width: 200px;
       display: none;
+    }
+    #crafting h3 { margin-bottom: 5px; color: #f59e0b; }
+    #crafting button {
+      display: block;
+      width: 100%;
+      margin: 3px 0;
+      padding: 5px;
+      background: #333;
+      color: #fff;
+      border: 1px solid #555;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 11px;
+    }
+    #crafting button:hover { background: #444; }
+    #crafting button:disabled { opacity: 0.5; cursor: not-allowed; }
+    #info {
+      position: absolute;
+      top: 60px;
+      left: 10px;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
     }
     .hidden { display: none !important; }
   </style>
@@ -102,9 +135,30 @@
     <div id="hud" class="hidden">
       <span id="time">🕐 12:00</span>
       <span id="phase">☀️ 白天</span>
-      <span id="players">👥 0 玩家</span>
+      <span id="players">👥 0</span>
+      <span id="wave">🧟 波次: 0</span>
     </div>
-    <div id="error"></div>
+    <div id="info" class="hidden">
+      <div>❤️ 生命: <span id="health">100</span></div>
+      <div>📦 木材: <span id="wood">0</span></div>
+      <div>🪨 石材: <span id="stone">0</span></div>
+      <div>🔩 金属: <span id="metal">0</span></div>
+      <div>🍎 食物: <span id="food">0</span></div>
+    </div>
+    <div id="inventory" class="hidden">
+      <h3>🎒 背包 (按C打开合成)</h3>
+      <div id="invList"></div>
+    </div>
+    <div id="crafting">
+      <h3>🔨 合成 (按C关闭)</h3>
+      <button data-recipe="木剑">木剑 🗡️</button>
+      <button data-recipe="石剑">石剑 🗡️</button>
+      <button data-recipe="木弓">木弓 🏹</button>
+      <button data-recipe="石镐">石镐 ⛏️</button>
+      <button data-recipe="绷带">绷带 🩹</button>
+      <button data-recipe="木墙">木墙 🧱</button>
+      <button data-recipe="石墙">石墙 🧱</button>
+    </div>
   </div>
 
   <script>
@@ -115,32 +169,51 @@
     const MAP_HEIGHT = 2000;
     
     let playerId = null;
-    let playerName = '';
     let playerX = 1000;
     let playerY = 1000;
     let gameState = null;
     let polling = null;
+    let inventory = { wood: 0, stone: 0, metal: 0, food: 0, herb: 0 };
+    let weapon = null;
+    let showCrafting = false;
     
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     const loginDiv = document.getElementById('login');
     const hudDiv = document.getElementById('hud');
-    const nameInput = document.getElementById('nameInput');
-    const joinBtn = document.getElementById('joinBtn');
-    const timeSpan = document.getElementById('time');
-    const phaseSpan = document.getElementById('phase');
-    const playersSpan = document.getElementById('players');
-    const errorDiv = document.getElementById('error');
+    const invDiv = document.getElementById('invList');
+    const craftDiv = document.getElementById('crafting');
     
-    function showError(msg) {
-      errorDiv.textContent = msg;
-      errorDiv.style.display = 'block';
-      setTimeout(() => errorDiv.style.display = 'none', 5000);
-    }
+    // 资源颜色和图标
+    const RES_COLORS = {
+      wood: '#92400e',
+      stone: '#6b7280',
+      metal: '#475569',
+      food: '#dc2626',
+      herb: '#16a34a'
+    };
+    const RES_ICONS = {
+      wood: '🪵',
+      stone: '🪨',
+      metal: '🔩',
+      food: '🍎',
+      herb: '🌿'
+    };
+    
+    // 合成配方
+    const RECIPES = {
+      '木剑': { wood: 8, result: 'weapon', name: '木剑', attack: 5 },
+      '石剑': { wood: 5, stone: 10, result: 'weapon', name: '石剑', attack: 10 },
+      '木弓': { wood: 10, herb: 2, result: 'weapon', name: '木弓', attack: 8 },
+      '石镐': { wood: 3, stone: 5, result: 'tool', name: '石镐', bonus: 2 },
+      '绷带': { herb: 2, food: 1, result: 'heal', name: '绷带', heal: 30 },
+      '木墙': { wood: 15, result: 'building', name: '木墙', hp: 100 },
+      '石墙': { wood: 5, stone: 20, result: 'building', name: '石墙', hp: 300 }
+    };
     
     async function joinGame() {
-      const name = nameInput.value.trim();
-      if (!name) { showError('请输入名字'); return; }
+      const name = document.getElementById('nameInput').value.trim();
+      if (!name) return;
       
       try {
         const res = await fetch(API_BASE + '/api/game', {
@@ -149,20 +222,19 @@
           body: JSON.stringify({ action: 'join', name })
         });
         
-        if (!res.ok) throw new Error('加入失败');
-        
         const data = await res.json();
         playerId = data.playerId;
-        playerName = name;
         playerX = data.player.x;
         playerY = data.player.y;
         
         loginDiv.classList.add('hidden');
         hudDiv.classList.remove('hidden');
+        document.getElementById('info').classList.remove('hidden');
+        document.getElementById('inventory').classList.remove('hidden');
         
         startPolling();
       } catch (e) {
-        showError('连接失败: ' + e.message);
+        alert('连接失败: ' + e.message);
       }
     }
     
@@ -170,30 +242,37 @@
       polling = setInterval(async () => {
         try {
           const res = await fetch(API_BASE + '/api/game?playerId=' + playerId + '&x=' + playerX + '&y=' + playerY);
-          if (!res.ok) return;
           gameState = await res.json();
           render();
           updateHUD();
         } catch (e) { console.error(e); }
-      }, 1000);
+      }, 500); // 改为500ms
     }
     
     function updateHUD() {
       if (!gameState) return;
       const hour = Math.floor(gameState.dayTime);
-      timeSpan.textContent = '🕐 ' + hour + ':00';
-      phaseSpan.textContent = gameState.phase === 'day' ? '☀️ 白天' : 
+      document.getElementById('time').textContent = '🕐 ' + hour + ':00';
+      document.getElementById('phase').textContent = gameState.phase === 'day' ? '☀️ 白天' : 
                              gameState.phase === 'twilight' ? '🌆 黄昏' : '🧟 夜晚';
-      playersSpan.textContent = '👥 ' + gameState.players.length + ' 玩家';
+      document.getElementById('players').textContent = '👥 ' + gameState.players.length;
+      document.getElementById('wave').textContent = '🧟 波次: ' + gameState.wave;
+      
+      const me = gameState.players.find(p => p.id === playerId);
+      if (me) {
+        document.getElementById('health').textContent = Math.floor(me.health || 100);
+      }
     }
     
     function render() {
+      // 清空
       ctx.fillStyle = '#1a1a2e';
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       
       const camX = playerX - CANVAS_WIDTH / 2;
       const camY = playerY - CANVAS_HEIGHT / 2;
       
+      // 绘制网格
       ctx.strokeStyle = '#333';
       ctx.lineWidth = 1;
       for (let x = -camX % 32; x < CANVAS_WIDTH; x += 32) {
@@ -205,56 +284,216 @@
       
       if (!gameState) return;
       
-      const colors = { wood: '#92400e', stone: '#6b7280', metal: '#475569', food: '#dc2626', herb: '#16a34a' };
-      
+      // 绘制资源 - 带文字标签
       for (const r of gameState.resources) {
         const sx = r.x - camX, sy = r.y - camY;
         if (sx < -32 || sx > CANVAS_WIDTH + 32 || sy < -32 || sy > CANVAS_HEIGHT + 32) continue;
-        ctx.fillStyle = colors[r.type] || '#888';
-        ctx.fillRect(sx - 10, sy - 10, 20, 20);
-      }
-      
-      for (const p of gameState.players) {
-        const sx = p.x - camX, sy = p.y - camY;
-        ctx.fillStyle = p.id === playerId ? '#4ade80' : '#22c55e';
-        ctx.beginPath(); ctx.arc(sx, sy, 16, 0, Math.PI * 2); ctx.fill();
+        
+        ctx.fillStyle = RES_COLORS[r.type] || '#888';
+        ctx.fillRect(sx - 12, sy - 12, 24, 24);
+        
+        // 显示文字
         ctx.fillStyle = '#fff';
-        ctx.font = '12px Arial';
+        ctx.font = 'bold 10px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText(p.name, sx, sy - 25);
-        ctx.fillStyle = '#ef4444';
-        ctx.fillRect(sx - 20, sy - 20, 40 * (p.health / 100), 4);
+        ctx.fillText(RES_ICONS[r.type] || '?', sx, sy + 4);
       }
       
+      // 绘制建筑
+      for (const b of gameState.buildings || []) {
+        const sx = b.x - camX, sy = b.y - camY;
+        ctx.fillStyle = '#78716c';
+        ctx.fillRect(sx - 20, sy - 20, 40, 40);
+        ctx.fillStyle = '#fff';
+        ctx.font = '16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('🏠', sx, sy + 6);
+      }
+      
+      // 绘制僵尸
       const zombieColors = { normal: '#84cc16', fast: '#f59e0b', giant: '#dc2626', crawler: '#8b5cf6' };
       for (const z of gameState.zombies) {
         const sx = z.x - camX, sy = z.y - camY;
+        
         ctx.fillStyle = zombieColors[z.type] || '#84cc16';
-        ctx.beginPath(); ctx.arc(sx, sy, z.type === 'giant' ? 24 : 14, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath();
+        ctx.arc(sx, sy, z.type === 'giant' ? 24 : 14, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // 僵尸类型标签
+        const labels = { normal: '🧟', fast: '💨', giant: '👹', crawler: '🕷️' };
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(labels[z.type] || '🧟', sx, sy + 4);
+        
+        // 血条
         ctx.fillStyle = '#ef4444';
-        ctx.fillRect(sx - 15, sy - 20, 30 * (z.health / 100), 3);
+        ctx.fillRect(sx - 15, sy - 30, 30 * (z.health / 100), 3);
+      }
+      
+      // 绘制玩家
+      for (const p of gameState.players) {
+        const sx = p.x - camX, sy = p.y - camY;
+        
+        // 玩家身体
+        ctx.fillStyle = p.id === playerId ? '#4ade80' : '#22c55e';
+        ctx.beginPath();
+        ctx.arc(sx, sy, 16, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // 武器
+        if (p.weapon) {
+          ctx.font = '12px Arial';
+          ctx.fillText('🗡️', sx + 15, sy);
+        }
+        
+        // 名字
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(p.name, sx, sy - 25);
+        
+        // 血条
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(sx - 20, sy - 20, 40 * ((p.health || 100) / 100), 4);
       }
     }
     
+    // 键盘控制
     const keys = {};
-    document.addEventListener('keydown', e => { keys[e.key] = true; movePlayer(); });
-    document.addEventListener('keyup', e => keys[e.key] = false);
+    document.addEventListener('keydown', e => {
+      keys[e.key.toLowerCase()] = true;
+      
+      // 切换合成界面
+      if (e.key.toLowerCase() === 'c') {
+        showCrafting = !showCrafting;
+        craftDiv.style.display = showCrafting ? 'block' : 'none';
+      }
+      
+      movePlayer();
+    });
+    document.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
     
     function movePlayer() {
       const speed = 5;
       let dx = 0, dy = 0;
-      if (keys['w'] || keys['ArrowUp']) dy -= speed;
-      if (keys['s'] || keys['ArrowDown']) dy += speed;
-      if (keys['a'] || keys['ArrowLeft']) dx -= speed;
-      if (keys['d'] || keys['ArrowRight']) dx += speed;
+      if (keys['w'] || keys['arrowup']) dy -= speed;
+      if (keys['s'] || keys['arrowdown']) dy += speed;
+      if (keys['a'] || keys['arrowleft']) dx -= speed;
+      if (keys['d'] || keys['arrowright']) dx += speed;
+      
       if (dx !== 0 || dy !== 0) {
         playerX = Math.max(0, Math.min(MAP_WIDTH, playerX + dx));
         playerY = Math.max(0, Math.min(MAP_HEIGHT, playerY + dy));
+        
+        // 检测采集资源
+        checkHarvest();
+        
+        // 检测攻击僵尸
+        checkAttack();
       }
     }
     
-    joinBtn.addEventListener('click', joinGame);
-    nameInput.addEventListener('keypress', e => { if (e.key === 'Enter') joinGame(); });
+    function checkHarvest() {
+      if (!gameState) return;
+      for (const r of gameState.resources) {
+        const dist = Math.hypot(r.x - playerX, r.y - playerY);
+        if (dist < 40 && r.amount > 0) {
+          // 采集
+          inventory[r.type] = (inventory[r.type] || 0) + 1;
+          updateInventoryUI();
+          
+          // 发送采集请求
+          fetch(API_BASE + '/api/game', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'harvest', playerId, resourceId: r.id, resourceType: r.type })
+          });
+          break;
+        }
+      }
+    }
+    
+    function checkAttack() {
+      if (!gameState || !weapon) return;
+      for (const z of gameState.zombies) {
+        const dist = Math.hypot(z.x - playerX, z.y - playerY);
+        if (dist < 60) {
+          // 攻击
+          fetch(API_BASE + '/api/game', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'attack', playerId, targetId: z.id, damage: weapon.attack })
+          });
+          break;
+        }
+      }
+    }
+    
+    function updateInventoryUI() {
+      let html = '';
+      for (const [type, count] of Object.entries(inventory)) {
+        if (count > 0) {
+          html += `<div>${RES_ICONS[type]} ${type}: ${count}</div>`;
+        }
+      }
+      if (weapon) {
+        html += `<div>🗡️ 武器: ${weapon.name} (${weapon.attack}攻击)</div>`;
+      }
+      invDiv.innerHTML = html || '背包为空';
+      
+      // 更新合成按钮状态
+      document.querySelectorAll('#crafting button').forEach(btn => {
+        const recipe = RECIPES[btn.dataset.recipe];
+        let canCraft = true;
+        for (const [mat, need] of Object.entries(recipe)) {
+          if (mat !== 'result' && mat !== 'name' && mat !== 'attack' && mat !== 'heal' && mat !== 'hp' && mat !== 'bonus') {
+            if ((inventory[mat] || 0) < need) canCraft = false;
+          }
+        }
+        btn.disabled = !canCraft;
+      });
+    }
+    
+    // 合成
+    document.querySelectorAll('#crafting button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const recipe = RECIPES[btn.dataset.recipe];
+        
+        // 检查材料
+        for (const [mat, need] of Object.entries(recipe)) {
+          if (mat !== 'result' && mat !== 'name' && mat !== 'attack' && mat !== 'heal' && mat !== 'hp' && mat !== 'bonus') {
+            if ((inventory[mat] || 0) < need) return;
+          }
+        }
+        
+        // 消耗材料
+        for (const [mat, need] of Object.entries(recipe)) {
+          if (mat !== 'result' && mat !== 'name' && mat !== 'attack' && mat !== 'heal' && mat !== 'hp' && mat !== 'bonus') {
+            inventory[mat] -= need;
+          }
+        }
+        
+        // 应用结果
+        if (recipe.result === 'weapon') {
+          weapon = { name: recipe.name, attack: recipe.attack };
+        } else if (recipe.result === 'heal') {
+          const me = gameState?.players?.find(p => p.id === playerId);
+          if (me) me.health = Math.min(100, (me.health || 100) + recipe.heal);
+        }
+        
+        updateInventoryUI();
+        
+        // 发送合成请求到服务器
+        fetch(API_BASE + '/api/game', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'craft', playerId, recipe: btn.dataset.recipe })
+        });
+      });
+    });
+    
+    document.getElementById('joinBtn').addEventListener('click', joinGame);
   </script>
 </body>
 </html>
