@@ -202,6 +202,7 @@
       <button data-recipe="血瓶">🧪 血瓶</button>
       <button data-recipe="木墙">🧱 木墙</button>
       <button data-recipe="石墙">🏗️ 石墙</button>
+      <button data-recipe="炮台">🔫 炮台</button>
     </div>
     
     <!-- 移动端控制 -->
@@ -222,6 +223,7 @@
       <div class="control-group action-btns">
         <div class="ctrl-btn action-btn craft" id="craftBtn">🔨</div>
         <div class="ctrl-btn action-btn attack" id="attackBtn">⚔️</div>
+        <div class="ctrl-btn action-btn" id="buildBtn" style="background:rgba(59,130,246,0.4);border-color:#3b82f6;">🏗️</div>
       </div>
     </div>
   </div>
@@ -252,6 +254,11 @@
     let weapon = null;
     let health = 100;
     let healthPotions = 0;
+    let showAttackEffect = false;
+    let attackEffectTime = 0;
+    let showBuildMenu = false;
+    let localBullets = [];
+    let attackEffects = []; // 攻击特效
     
     const keys = {};
     
@@ -349,7 +356,10 @@
       if (!gameState || !weapon) return;
       for (const z of gameState.zombies) {
         const dist = Math.hypot(z.x - localX, z.y - localY);
-        if (dist < weapon.type === '弓箭' ? 150 : 60) {
+        if (dist < (weapon.type === '弓箭' ? 150 : 60)) {
+          // 添加攻击特效
+          attackEffects.push({ x: z.x, y: z.y, life: 15 });
+          
           z.health -= weapon.attack;
           if (z.health <= 0) {
             gameState.zombies = gameState.zombies.filter(zz => zz.id !== z.id);
@@ -430,6 +440,59 @@
         ctx.fillRect(sx - 12, sy - 25, 24 * (z.health / (z.type === 'giant' ? 200 : 50)), 3);
       }
       
+      // 建筑
+      for (const b of gameState.buildings || []) {
+        const sx = b.x - camX, sy = b.y - camY;
+        if (b.type === 'turret') {
+          ctx.fillStyle = '#3b82f6';
+          ctx.beginPath();
+          ctx.arc(sx, sy, 20, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#fff';
+          ctx.font = '16px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText('🔫', sx, sy + 5);
+        } else if (b.type === 'wall_stone') {
+          ctx.fillStyle = '#78716c';
+          ctx.fillRect(sx - 25, sy - 25, 50, 50);
+          ctx.fillStyle = '#fff';
+          ctx.font = '16px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText('🧱', sx, sy + 5);
+        } else {
+          ctx.fillStyle = '#92400e';
+          ctx.fillRect(sx - 20, sy - 20, 40, 40);
+          ctx.fillStyle = '#fff';
+          ctx.font = '16px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText('🏠', sx, sy + 5);
+        }
+      }
+      
+      // 子弹
+      for (const bullet of gameState.bullets || []) {
+        const sx = bullet.x - camX, sy = bullet.y - camY;
+        ctx.fillStyle = '#fbbf24';
+        ctx.beginPath();
+        ctx.arc(sx, sy, 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      
+      // 攻击特效
+      for (const eff of attackEffects) {
+        const sx = eff.x - camX, sy = eff.y - camY;
+        ctx.fillStyle = `rgba(255, 200, 0, ${eff.life / 10})`;
+        ctx.beginPath();
+        ctx.arc(sx, sy, 30 * (1 - eff.life / 15), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      
+      // 更新特效
+      attackEffects = attackEffects.filter(e => {
+        e.life--;
+        return e.life > 0;
+      });
+      
       // 其他玩家
       for (const p of gameState.players) {
         if (p.id === playerId) continue;
@@ -493,8 +556,9 @@
       '弓箭': { wood: 10, herb: 5, attack: 8 },
       '绷带': { herb: 2, food: 1, heal: 30 },
       '血瓶': { herb: 5, food: 3, heal: 50 },
-      '木墙': { wood: 15, hp: 100 },
-      '石墙': { wood: 5, stone: 20, hp: 300 }
+      '木墙': { wood: 15, hp: 100, build: 'wall_wood' },
+      '石墙': { wood: 5, stone: 20, hp: 300, build: 'wall_stone' },
+      '炮台': { wood: 30, stone: 30, metal: 10, hp: 100, build: 'turret' }
     };
     
     function updateInventoryUI() {
@@ -521,12 +585,28 @@
       btn.addEventListener('click', () => {
         const r = RECIPES[btn.dataset.recipe];
         for (const [m, n] of Object.entries(r)) {
-          if (m !== 'attack' && m !== 'heal' && m !== 'hp') inventory[m] -= n;
+          if (m !== 'attack' && m !== 'heal' && m !== 'hp' && m !== 'build') inventory[m] -= n;
         }
         if (r.attack) weapon = { name: btn.dataset.recipe, attack: r.attack, type: btn.dataset.recipe };
         if (r.heal) healthPotions++;
         if (btn.dataset.recipe === '绷带') health = Math.min(100, health + 30);
         if (btn.dataset.recipe === '血瓶') health = Math.min(100, health + 50);
+        
+        // 建造建筑
+        if (r.build) {
+          fetch(API_BASE + '/api/game', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              action: 'build', 
+              playerId, 
+              buildingType: r.build, 
+              x: localX, 
+              y: localY 
+            })
+          });
+        }
+        
         updateInventoryUI();
       });
       btn.addEventListener('touchstart', e => {

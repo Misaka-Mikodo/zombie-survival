@@ -9,6 +9,7 @@ function initGameState() {
     players: new Map(),
     zombies: new Map(),
     buildings: new Map(),
+    bullets: [],
     resources: [],
     tick: 0,
     dayTime: 12,
@@ -18,13 +19,13 @@ function initGameState() {
     lastWaveTime: Date.now()
   };
   
-  const TYPES = ['wood', 'stone', 'metal', 'food', 'herb'];
+  const TYPES = ['wood', 'stone', 'metal', 'food', 'herb', 'gold', 'diamond'];
   
-  // 初始化资源
-  for (let i = 0; i < 80; i++) {
+  // 初始化更多资源
+  for (let i = 0; i < 150; i++) {
     gameState.resources.push({
       id: `resource_${i}`,
-      type: TYPES[i % TYPES.length], // 循环使用类型
+      type: TYPES[i % TYPES.length],
       x: Math.floor(Math.random() * 1800 + 100),
       y: Math.floor(Math.random() * 1800 + 100),
       amount: 3
@@ -32,11 +33,11 @@ function initGameState() {
   }
 }
 
-// 更新昼夜循环
+// 更新昼夜循环和僵尸移动
 function updateDayNight() {
   if (!gameState) return;
   
-  gameState.dayTime += 0.1; // 增加时间
+  gameState.dayTime += 0.1;
   
   if (gameState.dayTime >= 24) {
     gameState.dayTime = 6;
@@ -48,13 +49,108 @@ function updateDayNight() {
     gameState.phase = 'twilight';
   } else if (gameState.dayTime >= 20 || gameState.dayTime < 6) {
     gameState.phase = 'night';
-    // 夜晚生成僵尸
-    if (Date.now() - gameState.lastWaveTime > 10000 && gameState.wave < 10) {
+    if (Date.now() - gameState.lastWaveTime > 10000 && gameState.wave < 15) {
       spawnZombieWave();
       gameState.lastWaveTime = Date.now();
     }
   } else {
     gameState.phase = 'day';
+  }
+  
+  // 更新僵尸移动 - 向玩家移动
+  for (const [id, zombie] of gameState.zombies) {
+    const players = Array.from(gameState.players.values());
+    if (players.length > 0) {
+      // 找最近的玩家
+      let nearest = null;
+      let minDist = Infinity;
+      for (const p of players) {
+        const d = Math.hypot(p.x - zombie.x, p.y - zombie.y);
+        if (d < minDist) {
+          minDist = d;
+          nearest = p;
+        }
+      }
+      
+      if (nearest && minDist > 30) {
+        // 向玩家移动
+        const speed = zombie.speed || 1;
+        zombie.x += (nearest.x - zombie.x) / minDist * speed;
+        zombie.y += (nearest.y - zombie.y) / minDist * speed;
+      }
+    }
+  }
+  
+  // 更新子弹
+  updateBullets();
+  
+  // 炮台自动攻击
+  updateTurrets();
+}
+
+function updateBullets() {
+  if (!gameState) return;
+  
+  for (let i = gameState.bullets.length - 1; i >= 0; i--) {
+    const bullet = gameState.bullets[i];
+    bullet.x += bullet.vx;
+    bullet.y += bullet.vy;
+    bullet.life--;
+    
+    // 检测击中僵尸
+    for (const [id, zombie] of gameState.zombies) {
+      const dist = Math.hypot(zombie.x - bullet.x, zombie.y - bullet.y);
+      if (dist < 25) {
+        zombie.health -= bullet.damage;
+        bullet.life = 0;
+        
+        if (zombie.health <= 0) {
+          gameState.zombies.delete(id);
+        }
+        break;
+      }
+    }
+    
+    if (bullet.life <= 0) {
+      gameState.bullets.splice(i, 1);
+    }
+  }
+}
+
+function updateTurrets() {
+  if (!gameState) return;
+  
+  for (const [id, building] of gameState.buildings) {
+    if (building.type === 'turret' && building.cooldown <= 0) {
+      // 找最近的僵尸
+      let nearest = null;
+      let minDist = 300; // 射程
+      
+      for (const [zid, zombie] of gameState.zombies) {
+        const d = Math.hypot(zombie.x - building.x, zombie.y - building.y);
+        if (d < minDist) {
+          minDist = d;
+          nearest = zombie;
+        }
+      }
+      
+      if (nearest) {
+        // 发射子弹
+        const angle = Math.atan2(nearest.y - building.y, nearest.x - building.x);
+        gameState.bullets.push({
+          id: 'bullet_' + Date.now() + '_' + Math.random(),
+          x: building.x,
+          y: building.y,
+          vx: Math.cos(angle) * 10,
+          vy: Math.sin(angle) * 10,
+          damage: 15,
+          life: 60
+        });
+        building.cooldown = 30;
+      }
+    }
+    
+    if (building.cooldown > 0) building.cooldown--;
   }
 }
 
@@ -79,6 +175,7 @@ function spawnZombieWave() {
     
     const type = ZOMBIE_TYPES[Math.floor(Math.random() * ZOMBIE_TYPES.length)];
     const hp = type === 'giant' ? 200 : type === 'fast' ? 30 : type === 'crawler' ? 40 : 50;
+    const speed = type === 'fast' ? 3 : type === 'giant' ? 0.5 : 1.5;
     
     gameState.zombies.set(`zombie_${Date.now()}_${i}`, {
       id: `zombie_${Date.now()}_${i}`,
@@ -86,13 +183,13 @@ function spawnZombieWave() {
       x,
       y,
       health: hp,
-      maxHealth: hp
+      maxHealth: hp,
+      speed
     });
   }
 }
 
 export default function handler(req: any, res: any) {
-  // 初始化
   initGameState();
   
   const { method } = req;
@@ -103,7 +200,6 @@ export default function handler(req: any, res: any) {
   
   if (method === 'OPTIONS') return res.status(200).end();
   
-  // 更新昼夜
   updateDayNight();
   
   const MAP_WIDTH = 2000;
@@ -131,7 +227,8 @@ export default function handler(req: any, res: any) {
       players: Array.from(gameState.players.values()),
       zombies: Array.from(gameState.zombies.values()),
       resources: gameState.resources.filter((r: any) => r.amount > 0),
-      buildings: Array.from(gameState.buildings.values())
+      buildings: Array.from(gameState.buildings.values()),
+      bullets: gameState.bullets
     });
   }
   
@@ -166,7 +263,6 @@ export default function handler(req: any, res: any) {
       
       if (resourceIndex >= 0 && gameState.resources[resourceIndex].amount > 0) {
         gameState.resources[resourceIndex].amount--;
-        
         return res.json({ 
           success: true, 
           resource: gameState.resources[resourceIndex].type, 
@@ -190,6 +286,22 @@ export default function handler(req: any, res: any) {
         return res.json({ killed: false, damage: damage || 10, health: zombie.health });
       }
       return res.json({ error: 'Target not found' });
+    }
+    
+    if (action === 'build') {
+      const { playerId, buildingType, x, y } = data;
+      const buildingId = 'building_' + Date.now();
+      
+      gameState.buildings.set(buildingId, {
+        id: buildingId,
+        type: buildingType,
+        x: x || 1000,
+        y: y || 1000,
+        health: buildingType === 'turret' ? 100 : buildingType === 'wall_stone' ? 300 : 100,
+        cooldown: 0
+      });
+      
+      return res.json({ success: true, buildingId });
     }
   }
   
