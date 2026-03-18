@@ -316,3 +316,10 @@ export class CraftingSystem {
 }
 
 export default CraftingSystem;
+// 更多合成配方
+export const MORE_RECIPES = [
+  { id: 'iron_sword', name: '铁剑', result: { id: 'iron_sword', name: '铁剑', type: 'weapon' as const, stackable: false, maxStack: 1, quantity: 1, stats: { attack: 20 } }, ingredients: [{ itemId: 'metal', quantity: 15 }], craftingTime: 5000 },
+  { id: 'iron_armor', name: '铁甲', result: { id: 'iron_armor', name: '铁甲', type: 'armor' as const, stackable: false, maxStack: 1, quantity: 1, stats: { defense: 15 } }, ingredients: [{ itemId: 'metal', quantity: 25 }], craftingTime: 8000 },
+  { id: 'health_potion', name: '生命药水', result: { id: 'health_potion', name: '生命药水', type: 'consumable' as const, stackable: true, maxStack: 10, quantity: 1, stats: { healthRestore: 50 } }, ingredients: [{ itemId: 'herb', quantity: 3 }], craftingTime: 2000 },
+  { id: 'campfire', name: '篝火', result: { id: 'campfire', name: '篝火', type: 'tool' as const, stackable: true, maxStack: 5, quantity: 1 }, ingredients: [{ itemId: 'wood', quantity: 5 }], craftingTime: 1000 },
+];
