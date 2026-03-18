@@ -1,16 +1,22 @@
 {
   "name": "zombie-survival",
   "version": "1.0.0",
-  "description": "2D Multiplayer Zombie Survival Game",
+  "private": true,
   "scripts": {
-    "dev": "concurrently \"npm run client\" \"npm run server\"",
-    "client": "cd client && npm run dev",
-    "server": "cd server && npm run dev",
+    "dev": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
+    "dev:client": "cd client && npm run dev",
+    "dev:server": "cd server && npm run dev",
     "build": "npm run build:client && npm run build:server",
-    "start": "NODE_ENV=production node server/dist/index.js"
+    "build:client": "cd client && npm run build",
+    "build:server": "cd server && npm run build",
+    "start": "NODE_ENV=production node server/dist/index.js",
+    "deploy": "npm run build && vercel deploy --prod"
   },
   "workspaces": [
     "client",
     "server"
-  ]
+  ],
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  }
 }

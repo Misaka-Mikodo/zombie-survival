@@ -1,61 +1,75 @@
-# Zombie Survival: Sanctuary
+# 🧟 Zombie Survival: Sanctuary
 
-## 游戏简介
+2D多人联机沙盒僵尸生存游戏 - Web-based multiplayer zombie survival game
 
-一款基于Web的2D多人联机沙盒僵尸生存游戏。玩家在白天收集资源、建造强化庇护所，夜晚抵御僵尸潮汐进攻。
+## 🚀 一键部署
 
-## 技术栈
-
-- **前端**: React 18 + TypeScript + PixiJS
-- **后端**: Node.js + Express + Socket.io
-- **数据库**: PostgreSQL + Redis
-- **部署**: Docker
-
-## 开发阶段
-
-### Phase 1: 基础框架
-- [ ] 项目初始化
-- [ ] 开发环境搭建
-- [ ] 单人原型
-
-### Phase 2: 核心玩法
-- [ ] 昼夜循环系统
-- [ ] 资源收集系统
-- [ ] 合成系统
-- [ ] 庇护所建造
-
-### Phase 3: 联机系统
-- [ ] WebSocket多人同步
-- [ ] 房间系统
-
-### Phase 4: 战斗系统
-- [ ] 僵尸AI
-- [ ] 战斗机制
-- [ ] 伤害计算
-
-### Phase 5: 数据持久化
-- [ ] PostgreSQL集成
-- [ ] 玩家数据存储
-
-## 开始开发
+### Vercel (推荐 - 前端+后端)
 
 ```bash
-# 克隆仓库
-git clone https://github.com/[username]/zombie-survival.git
+# 安装
+npm i -g vercel
+
+# 登录
+vercel login
+
+# 部署
+vercel deploy --prod
+```
+
+就 **2步** 完成部署！
+
+---
+
+## 本地开发
+
+```bash
+# 克隆
+git clone https://github.com/Misaka-Mikodo/zombie-survival.git
 cd zombie-survival
 
 # 安装依赖
 npm install
 
-# 启动开发服务器
+# 启动
 npm run dev
 ```
 
+- 前端: http://localhost:5173
+- 后端: http://localhost:3001
+
+---
+
+## 游戏特色
+
+- 🌅 **昼夜循环** - 白天收集资源，夜晚抵御尸潮
+- 🔨 **合成系统** - 10+配方制作武器装备
+- 🏠 **建筑系统** - 建造墙壁、防御塔、储物箱
+- 👥 **多人联机** - 实时WebSocket同步
+- 🧟 **僵尸AI** - 4种僵尸类型
+
+---
+
+## 技术栈
+
+| 层级 | 技术 |
+|------|------|
+| 前端 | React + TypeScript + Canvas |
+| 后端 | Node.js + Socket.io |
+| 状态 | Zustand |
+| 部署 | Vercel |
+
+---
+
 ## 文档
 
+- [简明部署指南](./docs/DEPLOY_SIMPLE.md)
+- [详细部署文档](./docs/DEPLOY.md)
 - [需求文档](./docs/PRD.md)
 - [技术方案](./docs/TECH_SPEC.md)
 
-## 许可证
+---
+
+## License
 
 MIT
