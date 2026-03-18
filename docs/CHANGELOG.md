@@ -6,9 +6,17 @@
 
 ---
 
-## [0.2.0] - 2026-03-18
+## [0.3.0] - 2026-03-18
 
 ### 新增
+- 背包系统 (InventorySystem)
+- 战斗系统 (CombatSystem)
+- 地图系统 (MapSystem)
+- 建筑系统 (BuildingSystem)
+
+---
+
+## [0.2.0] - 2026-03-18
 - 用户系统 (feature-user-system.md)
   - 用户注册/登录API
   - JWT认证中间件
