@@ -2,29 +2,30 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <title>🧟 僵尸生存者</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { 
+    html, body { 
       background: #0f0f1a; 
       color: #fff;
       font-family: 'Segoe UI', sans-serif;
       overflow: hidden;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
+      touch-action: none;
+      height: 100%;
     }
     #game {
       position: relative;
-      border: 2px solid #4ade80;
-      border-radius: 8px;
-      overflow: hidden;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #0f0f1a;
     }
     canvas {
-      display: block;
-      background: #1a1a2e;
+      max-width: 100%;
+      max-height: 100%;
     }
     #login {
       position: absolute;
@@ -34,23 +35,23 @@
       align-items: center;
       justify-content: center;
       background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      z-index: 100;
     }
-    #login h1 { font-size: 2.5rem; margin-bottom: 1.5rem; color: #4ade80; }
+    #login h1 { font-size: 2rem; margin-bottom: 1rem; color: #4ade80; }
     #login input {
-      padding: 0.8rem 1.5rem;
-      font-size: 1.1rem;
+      padding: 0.8rem;
+      font-size: 1rem;
       border: 2px solid #4ade80;
       border-radius: 8px;
       background: rgba(0,0,0,0.3);
       color: #fff;
       margin-bottom: 1rem;
-      outline: none;
       width: 200px;
       text-align: center;
     }
     #login button {
       padding: 0.8rem 2rem;
-      font-size: 1.1rem;
+      font-size: 1rem;
       background: #4ade80;
       color: #000;
       border: none;
@@ -65,39 +66,40 @@
       right: 10px;
       display: flex;
       justify-content: space-between;
-      padding: 8px 15px;
+      padding: 8px;
       background: rgba(0,0,0,0.7);
       border-radius: 5px;
-      font-size: 14px;
+      font-size: 12px;
+      z-index: 10;
     }
     #inventory {
       position: absolute;
-      bottom: 10px;
+      bottom: 100px;
       left: 10px;
       background: rgba(0,0,0,0.7);
-      padding: 10px;
-      border-radius: 5px;
-      font-size: 12px;
-      max-width: 180px;
-    }
-    #inventory h3 { margin-bottom: 5px; color: #4ade80; }
-    #crafting {
-      position: absolute;
-      bottom: 10px;
-      right: 10px;
-      background: rgba(0,0,0,0.7);
-      padding: 10px;
+      padding: 8px;
       border-radius: 5px;
       font-size: 11px;
-      max-width: 160px;
-      display: none;
+      z-index: 10;
+      max-width: 140px;
     }
-    #crafting h3 { margin-bottom: 5px; color: #f59e0b; }
+    #crafting {
+      position: absolute;
+      bottom: 100px;
+      right: 10px;
+      background: rgba(0,0,0,0.7);
+      padding: 8px;
+      border-radius: 5px;
+      font-size: 10px;
+      z-index: 10;
+      display: none;
+      max-width: 120px;
+    }
     #crafting button {
       display: block;
       width: 100%;
       margin: 2px 0;
-      padding: 4px;
+      padding: 5px;
       background: #333;
       color: #fff;
       border: 1px solid #555;
@@ -105,101 +107,175 @@
       cursor: pointer;
       font-size: 10px;
     }
-    #crafting button:hover { background: #444; }
-    #crafting button:disabled { opacity: 0.4; }
-    #status {
+    /* 移动端控制区 */
+    #controls {
       position: absolute;
-      top: 50px;
-      left: 10px;
-      background: rgba(0,0,0,0.7);
-      padding: 8px;
-      border-radius: 5px;
-      font-size: 11px;
+      bottom: 20px;
+      left: 0;
+      right: 0;
+      display: none;
+      justify-content: space-between;
+      padding: 0 20px;
+      z-index: 20;
     }
+    .control-group {
+      display: flex;
+      gap: 10px;
+    }
+    .ctrl-btn {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: rgba(74, 222, 128, 0.3);
+      border: 2px solid #4ade80;
+      color: #fff;
+      font-size: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .ctrl-btn:active { background: rgba(74, 222, 128, 0.6); }
+    .dpad {
+      display: grid;
+      grid-template-columns: repeat(3, 50px);
+      grid-template-rows: repeat(3, 50px);
+      gap: 2px;
+    }
+    .dpad .ctrl-btn {
+      width: 50px;
+      height: 50px;
+      font-size: 18px;
+    }
+    .action-btns {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .action-btn {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: rgba(239, 68, 68, 0.3);
+      border: 2px solid #ef4444;
+      font-size: 12px;
+    }
+    .action-btn.attack { background: rgba(239, 68, 68, 0.4); }
+    .action-btn.craft { background: rgba(245, 158, 11, 0.4); border-color: #f59e0b; }
+    
+    /* 检测是否为移动端 */
+    @media (max-width: 768px), (pointer: coarse) {
+      #controls { display: flex; }
+      #inventory { bottom: 120px; }
+      #crafting { bottom: 120px; }
+    }
+    
     .hidden { display: none !important; }
   </style>
 </head>
 <body>
   <div id="game">
-    <canvas id="canvas" width="800" height="600"></canvas>
+    <canvas id="canvas"></canvas>
+    
     <div id="login">
       <h1>🧟 僵尸生存者</h1>
       <input type="text" id="nameInput" placeholder="输入你的名字" />
       <button id="joinBtn">开始游戏</button>
     </div>
+    
     <div id="hud" class="hidden">
       <span id="time">12:00</span>
-      <span id="phase">☀️ 白天</span>
+      <span id="phase">☀️</span>
       <span id="wave">🧟 0</span>
-      <span id="fps">60 FPS</span>
     </div>
-    <div id="status" class="hidden">
-      <div>❤️ <span id="health">100</span></div>
-      <div>🪵 <span id="wood">0</span></div>
-      <div>🪨 <span id="stone">0</span></div>
-      <div>🔩 <span id="metal">0</span></div>
-    </div>
+    
     <div id="inventory" class="hidden">
-      <h3>🎒 按C合成</h3>
       <div id="invList"></div>
     </div>
+    
     <div id="crafting">
-      <h3>🔨 合成 (C关闭)</h3>
       <button data-recipe="木剑">🗡️ 木剑</button>
       <button data-recipe="石剑">⚔️ 石剑</button>
-      <button data-recipe="木弓">🏹 木弓</button>
       <button data-recipe="绷带">🩹 绷带</button>
       <button data-recipe="木墙">🧱 木墙</button>
+    </div>
+    
+    <!-- 移动端控制 -->
+    <div id="controls" class="hidden">
+      <div class="control-group">
+        <div class="dpad">
+          <div></div>
+          <div class="ctrl-btn" data-key="w">⬆️</div>
+          <div></div>
+          <div class="ctrl-btn" data-key="a">⬅️</div>
+          <div></div>
+          <div class="ctrl-btn" data-key="d">➡️</div>
+          <div></div>
+          <div class="ctrl-btn" data-key="s">⬇️</div>
+          <div></div>
+        </div>
+      </div>
+      <div class="control-group action-btns">
+        <div class="ctrl-btn action-btn craft" id="craftBtn">🔨</div>
+        <div class="ctrl-btn action-btn attack" id="attackBtn">⚔️</div>
+      </div>
     </div>
   </div>
 
   <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    // 自适应画布大小
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    
     const API_BASE = '';
-    const CANVAS_WIDTH = 800;
-    const CANVAS_HEIGHT = 600;
     const MAP_WIDTH = 2000;
     const MAP_HEIGHT = 2000;
-    const SYNC_INTERVAL = 200; // 同步间隔200ms
+    const SYNC_INTERVAL = 200;
     
     let playerId = null;
-    // 本地预测位置（立即移动）
-    let localX = 1000;
-    let localY = 1000;
-    // 服务器确认位置
-    let serverX = 1000;
-    let serverY = 1000;
-    
+    let localX = 1000, localY = 1000;
     let gameState = null;
     let lastSync = 0;
     let showCrafting = false;
-    let lastFrameTime = performance.now();
-    let frameCount = 0;
-    let fps = 60;
-    
-    // 本地数据
     let inventory = { wood: 0, stone: 0, metal: 0, food: 0 };
     let weapon = null;
     let health = 100;
     
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    
-    const RES_COLORS = { wood: '#92400e', stone: '#6b7280', metal: '#475569', food: '#dc2626', herb: '#16a34a' };
-    const RES_ICONS = { wood: '🪵', stone: '🪨', metal: '🔩', food: '🍎', herb: '🌿' };
-    
-    const RECIPES = {
-      '木剑': { wood: 8, attack: 5 },
-      '石剑': { wood: 5, stone: 10, attack: 10 },
-      '木弓': { wood: 10, herb: 2, attack: 8 },
-      '绷带': { herb: 2, food: 1 },
-      '木墙': { wood: 15 }
-    };
-    
-    // ========== 核心：本地预测移动 ==========
     const keys = {};
-    let isMoving = false;
-    let lastMoveTime = 0;
     
+    // 移动端触摸控制
+    const touchKeys = { w: false, a: false, s: false, d: false };
+    
+    document.querySelectorAll('.ctrl-btn[data-key]').forEach(btn => {
+      const key = btn.dataset.key;
+      
+      btn.addEventListener('touchstart', e => { e.preventDefault(); touchKeys[key] = true; keys[key] = true; });
+      btn.addEventListener('touchend', e => { e.preventDefault(); touchKeys[key] = false; keys[key] = false; });
+      btn.addEventListener('touchcancel', e => { touchKeys[key] = false; keys[key] = false; });
+    });
+    
+    // 攻击按钮
+    document.getElementById('attackBtn').addEventListener('touchstart', e => {
+      e.preventDefault();
+      performAttack();
+    });
+    
+    // 合成按钮
+    document.getElementById('craftBtn').addEventListener('touchstart', e => {
+      e.preventDefault();
+      showCrafting = !showCrafting;
+      document.getElementById('crafting').style.display = showCrafting ? 'block' : 'none';
+    });
+    
+    // 键盘控制
     document.addEventListener('keydown', e => {
       keys[e.key.toLowerCase()] = true;
       if (e.key.toLowerCase() === 'c') {
@@ -209,34 +285,19 @@
     });
     document.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
     
-    // 60FPS本地渲染循环
+    // 游戏循环
     function gameLoop() {
-      // 计算FPS
-      frameCount++;
-      const now = performance.now();
-      if (now - lastFrameTime >= 1000) {
-        fps = frameCount;
-        frameCount = 0;
-        lastFrameTime = now;
-        document.getElementById('fps').textContent = fps + ' FPS';
-      }
-      
-      // 本地预测移动（立即响应）
       moveLocally();
-      
-      // 渲染
       render();
       
-      // 定期同步服务器
-      if (playerId && now - lastSync > SYNC_INTERVAL) {
+      if (playerId && Date.now() - lastSync > SYNC_INTERVAL) {
         syncToServer();
-        lastSync = now;
+        lastSync = Date.now();
       }
       
       requestAnimationFrame(gameLoop);
     }
     
-    // 本地移动 - 完全不依赖服务器
     function moveLocally() {
       const speed = 6;
       let dx = 0, dy = 0;
@@ -247,31 +308,12 @@
       if (keys['d'] || keys['arrowright']) dx += speed;
       
       if (dx !== 0 || dy !== 0) {
-        isMoving = true;
         localX = Math.max(0, Math.min(MAP_WIDTH, localX + dx));
         localY = Math.max(0, Math.min(MAP_HEIGHT, localY + dy));
-        
-        // 本地检测采集和攻击
         checkHarvestLocal();
-        checkAttackLocal();
-      } else {
-        isMoving = false;
       }
     }
     
-    // 异步同步到服务器
-    async function syncToServer() {
-      try {
-        const res = await fetch(API_BASE + '/api/game?playerId=' + playerId + '&x=' + Math.floor(localX) + '&y=' + Math.floor(localY));
-        const state = await res.json();
-        gameState = state;
-        
-        // 同步其他玩家位置（不做平滑处理，简单替换）
-        // 自己的位置以本地为准，忽略服务器返回
-      } catch (e) { /* 忽略同步错误 */ }
-    }
-    
-    // 本地检测采集
     function checkHarvestLocal() {
       if (!gameState) return;
       for (const r of gameState.resources) {
@@ -280,7 +322,6 @@
           inventory[r.type] = (inventory[r.type] || 0) + 1;
           r.amount--;
           updateInventoryUI();
-          // 异步通知服务器
           fetch(API_BASE + '/api/game', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -291,18 +332,15 @@
       }
     }
     
-    // 本地检测攻击
-    function checkAttackLocal() {
+    function performAttack() {
       if (!gameState || !weapon) return;
       for (const z of gameState.zombies) {
         const dist = Math.hypot(z.x - localX, z.y - localY);
-        if (dist < 50) {
-          // 本地减少僵尸血量
+        if (dist < 60) {
           z.health -= weapon.attack;
           if (z.health <= 0) {
             gameState.zombies = gameState.zombies.filter(zz => zz.id !== z.id);
           }
-          // 异步通知服务器
           fetch(API_BASE + '/api/game', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -313,30 +351,41 @@
       }
     }
     
-    // ========== 渲染 ==========
+    async function syncToServer() {
+      try {
+        const res = await fetch(API_BASE + '/api/game?playerId=' + playerId + '&x=' + Math.floor(localX) + '&y=' + Math.floor(localY));
+        gameState = await res.json();
+      } catch (e) {}
+    }
+    
     function render() {
-      ctx.fillStyle = '#1a1a2e';
-      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+      const W = canvas.width;
+      const H = canvas.height;
       
-      // 相机跟随本地位置
-      const camX = localX - CANVAS_WIDTH / 2;
-      const camY = localY - CANVAS_HEIGHT / 2;
+      ctx.fillStyle = '#1a1a2e';
+      ctx.fillRect(0, 0, W, H);
+      
+      const camX = localX - W / 2;
+      const camY = localY - H / 2;
       
       // 网格
       ctx.strokeStyle = '#2a2a3e';
-      for (let x = -camX % 32; x < CANVAS_WIDTH; x += 32) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, CANVAS_HEIGHT); ctx.stroke();
+      for (let x = -camX % 32; x < W; x += 32) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
       }
-      for (let y = -camY % 32; y < CANVAS_HEIGHT; y += 32) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(CANVAS_WIDTH, y); ctx.stroke();
+      for (let y = -camY % 32; y < H; y += 32) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
       }
       
       if (!gameState) return;
       
+      const RES_COLORS = { wood: '#92400e', stone: '#6b7280', metal: '#475569', food: '#dc2626' };
+      const RES_ICONS = { wood: '🪵', stone: '🪨', metal: '🔩', food: '🍎' };
+      
       // 资源
       for (const r of gameState.resources) {
         const sx = r.x - camX, sy = r.y - camY;
-        if (sx < -30 || sx > CANVAS_WIDTH + 30 || sy < -30 || sy > CANVAS_HEIGHT + 30) continue;
+        if (sx < -30 || sx > W + 30 || sy < -30 || sy > H + 30) continue;
         ctx.fillStyle = RES_COLORS[r.type] || '#888';
         ctx.fillRect(sx - 10, sy - 10, 20, 20);
         ctx.font = '12px Arial';
@@ -344,30 +393,19 @@
         ctx.fillText(RES_ICONS[r.type] || '?', sx, sy + 4);
       }
       
-      // 建筑
-      for (const b of gameState.buildings || []) {
-        const sx = b.x - camX, sy = b.y - camY;
-        ctx.fillStyle = '#78716c';
-        ctx.fillRect(sx - 20, sy - 20, 40, 40);
-        ctx.font = '16px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('🏠', sx, sy + 6);
-      }
-      
       // 僵尸
       const zombieIcons = { normal: '🧟', fast: '💨', giant: '👹', crawler: '🕷️' };
       for (const z of gameState.zombies) {
         const sx = z.x - camX, sy = z.y - camY;
-        ctx.fillStyle = z.type === 'giant' ? '#dc2626' : z.type === 'fast' ? '#f59e0b' : z.type === 'crawler' ? '#8b5cf6' : '#84cc16';
+        ctx.fillStyle = z.type === 'giant' ? '#dc2626' : z.type === 'fast' ? '#f59e0b' : '#84cc16';
         ctx.beginPath();
         ctx.arc(sx, sy, z.type === 'giant' ? 22 : 14, 0, Math.PI * 2);
         ctx.fill();
         ctx.font = '11px Arial';
         ctx.textAlign = 'center';
         ctx.fillText(zombieIcons[z.type] || '🧟', sx, sy + 4);
-        // 血条
         ctx.fillStyle = '#ef4444';
-        ctx.fillRect(sx - 12, sy - 25, 24 * (z.health / (z.type === 'giant' ? 200 : z.type === 'fast' ? 30 : 50)), 3);
+        ctx.fillRect(sx - 12, sy - 25, 24 * (z.health / (z.type === 'giant' ? 200 : 50)), 3);
       }
       
       // 其他玩家
@@ -377,35 +415,28 @@
         ctx.fillStyle = '#22c55e';
         ctx.beginPath(); ctx.arc(sx, sy, 14, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#fff';
-        ctx.font = 'bold 10px Arial';
+        ctx.font = '10px Arial';
         ctx.textAlign = 'center';
         ctx.fillText(p.name, sx, sy - 20);
       }
       
-      // 自己（始终在中间）
+      // 自己
       ctx.fillStyle = '#4ade80';
       ctx.beginPath();
-      ctx.arc(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2, 16, 0, Math.PI * 2);
+      ctx.arc(W / 2, H / 2, 16, 0, Math.PI * 2);
       ctx.fill();
-      
-      // 武器
       if (weapon) {
         ctx.font = '14px Arial';
-        ctx.fillText('🗡️', CANVAS_WIDTH / 2 + 18, CANVAS_HEIGHT / 2);
+        ctx.fillText('🗡️', W / 2 + 18, H / 2);
       }
-      
-      // 名字
       ctx.fillStyle = '#fff';
-      ctx.font = 'bold 11px Arial';
+      ctx.font = '11px Arial';
       ctx.textAlign = 'center';
-      ctx.fillText('你', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 22);
-      
-      // 血条
+      ctx.fillText('你', W / 2, H / 2 - 22);
       ctx.fillStyle = '#ef4444';
-      ctx.fillRect(CANVAS_WIDTH / 2 - 18, CANVAS_HEIGHT / 2 - 20, 36 * (health / 100), 4);
+      ctx.fillRect(W / 2 - 18, H / 2 - 20, 36 * (health / 100), 4);
     }
     
-    // ========== 其他功能 ==========
     async function joinGame() {
       const name = document.getElementById('nameInput').value.trim();
       if (!name) return;
@@ -424,43 +455,32 @@
         
         document.getElementById('login').classList.add('hidden');
         document.getElementById('hud').classList.remove('hidden');
-        document.getElementById('status').classList.remove('hidden');
         document.getElementById('inventory').classList.remove('hidden');
+        document.getElementById('controls').classList.remove('hidden');
         
-        // 启动游戏循环
         gameLoop();
-        
-        // 初始获取状态
         syncToServer();
       } catch (e) {
         alert('连接失败');
       }
     }
     
-    function updateHUD() {
-      if (!gameState) return;
-      const hour = Math.floor(gameState.dayTime);
-      document.getElementById('time').textContent = hour + ':00';
-      document.getElementById('phase').textContent = gameState.phase === 'day' ? '☀️' : gameState.phase === 'twilight' ? '🌆' : '🧟';
-      document.getElementById('wave').textContent = '🧟 ' + (gameState.wave || 0);
-      
-      const me = gameState.players?.find(p => p.id === playerId);
-      if (me) health = me.health || 100;
-      document.getElementById('health').textContent = Math.floor(health);
-    }
-    
-    // 每秒更新一次HUD（减少DOM操作）
-    setInterval(updateHUD, 1000);
+    const RECIPES = {
+      '木剑': { wood: 8, attack: 5 },
+      '石剑': { wood: 5, stone: 10, attack: 10 },
+      '绷带': { food: 1 },
+      '木墙': { wood: 15 }
+    };
     
     function updateInventoryUI() {
+      const RES_ICONS = { wood: '🪵', stone: '🪨', metal: '🔩', food: '🍎' };
       let html = '';
       for (const [type, count] of Object.entries(inventory)) {
-        if (count > 0) html += `<div>${RES_ICONS[type] || type} ${count}</div>`;
+        if (count > 0) html += `<div>${RES_ICONS[type]} ${count}</div>`;
       }
       if (weapon) html += `<div>🗡️ ${weapon.name}</div>`;
       document.getElementById('invList').innerHTML = html || '空';
       
-      // 更新合成按钮
       document.querySelectorAll('#crafting button').forEach(btn => {
         const r = RECIPES[btn.dataset.recipe];
         let can = true;
@@ -471,7 +491,6 @@
       });
     }
     
-    // 合成
     document.querySelectorAll('#crafting button').forEach(btn => {
       btn.addEventListener('click', () => {
         const r = RECIPES[btn.dataset.recipe];
@@ -481,6 +500,10 @@
         if (r.attack) weapon = { name: btn.dataset.recipe, attack: r.attack };
         if (btn.dataset.recipe === '绷带') health = Math.min(100, health + 30);
         updateInventoryUI();
+      });
+      btn.addEventListener('touchstart', e => {
+        e.stopPropagation();
+        btn.click();
       });
     });
     
