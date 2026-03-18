@@ -535,8 +535,11 @@
         
         const data = await res.json();
         playerId = data.playerId;
-        localX = data.player.x;
-        localY = data.player.y;
+        // 只在加入时使用服务器位置，之后只用本地预测
+        if (localX === 1000 && localY === 1000) {
+          localX = data.player.x;
+          localY = data.player.y;
+        }
         
         document.getElementById('login').classList.add('hidden');
         document.getElementById('hud').classList.remove('hidden');
