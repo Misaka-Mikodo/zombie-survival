@@ -1,8 +1,5 @@
 {
-  "buildCommand": "cd client && npm install && npm run build",
+  "buildCommand": "echo 'No build needed'",
   "outputDirectory": "client/dist",
-  "installCommand": "npm install",
-  "rewrites": [
-    { "source": "/api/game", "destination": "/api/game" }
-  ]
+  "installCommand": "echo 'No install needed'"
 }
