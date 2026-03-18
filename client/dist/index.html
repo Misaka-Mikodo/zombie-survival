@@ -197,8 +197,11 @@
     <div id="crafting">
       <button data-recipe="木剑">🗡️ 木剑</button>
       <button data-recipe="石剑">⚔️ 石剑</button>
+      <button data-recipe="弓箭">🏹 弓箭</button>
       <button data-recipe="绷带">🩹 绷带</button>
+      <button data-recipe="血瓶">🧪 血瓶</button>
       <button data-recipe="木墙">🧱 木墙</button>
+      <button data-recipe="石墙">🏗️ 石墙</button>
     </div>
     
     <!-- 移动端控制 -->
@@ -248,6 +251,7 @@
     let inventory = { wood: 0, stone: 0, metal: 0, food: 0 };
     let weapon = null;
     let health = 100;
+    let healthPotions = 0;
     
     const keys = {};
     
@@ -278,9 +282,15 @@
     // 键盘控制
     document.addEventListener('keydown', e => {
       keys[e.key.toLowerCase()] = true;
+      
       if (e.key.toLowerCase() === 'c') {
         showCrafting = !showCrafting;
         document.getElementById('crafting').style.display = showCrafting ? 'block' : 'none';
+      }
+      
+      // 快捷使用血瓶
+      if (e.key.toLowerCase() === 'h') {
+        useHealthPotion();
       }
     });
     document.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
@@ -339,7 +349,7 @@
       if (!gameState || !weapon) return;
       for (const z of gameState.zombies) {
         const dist = Math.hypot(z.x - localX, z.y - localY);
-        if (dist < 60) {
+        if (dist < weapon.type === '弓箭' ? 150 : 60) {
           z.health -= weapon.attack;
           if (z.health <= 0) {
             gameState.zombies = gameState.zombies.filter(zz => zz.id !== z.id);
@@ -351,6 +361,14 @@
           });
           break;
         }
+      }
+    }
+    
+    function useHealthPotion() {
+      if (healthPotions > 0 && health < 100) {
+        healthPotions--;
+        health = Math.min(100, health + 50);
+        updateInventoryUI();
       }
     }
     
@@ -472,17 +490,21 @@
     const RECIPES = {
       '木剑': { wood: 8, attack: 5 },
       '石剑': { wood: 5, stone: 10, attack: 10 },
-      '绷带': { food: 1 },
-      '木墙': { wood: 15 }
+      '弓箭': { wood: 10, herb: 5, attack: 8 },
+      '绷带': { herb: 2, food: 1, heal: 30 },
+      '血瓶': { herb: 5, food: 3, heal: 50 },
+      '木墙': { wood: 15, hp: 100 },
+      '石墙': { wood: 5, stone: 20, hp: 300 }
     };
     
     function updateInventoryUI() {
-      const RES_ICONS = { wood: '🪵', stone: '🪨', metal: '🔩', food: '🍎' };
+      const RES_ICONS = { wood: '🪵', stone: '🪨', metal: '🔩', food: '🍎', herb: '🌿' };
       let html = '';
       for (const [type, count] of Object.entries(inventory)) {
         if (count > 0) html += `<div>${RES_ICONS[type]} ${count}</div>`;
       }
-      if (weapon) html += `<div>🗡️ ${weapon.name}</div>`;
+      if (weapon) html += `<div>🗡️ ${weapon.name} (${weapon.attack})</div>`;
+      if (healthPotions > 0) html += `<div>🧪 血瓶 x${healthPotions}</div>`;
       document.getElementById('invList').innerHTML = html || '空';
       
       document.querySelectorAll('#crafting button').forEach(btn => {
@@ -499,10 +521,12 @@
       btn.addEventListener('click', () => {
         const r = RECIPES[btn.dataset.recipe];
         for (const [m, n] of Object.entries(r)) {
-          if (m !== 'attack') inventory[m] -= n;
+          if (m !== 'attack' && m !== 'heal' && m !== 'hp') inventory[m] -= n;
         }
-        if (r.attack) weapon = { name: btn.dataset.recipe, attack: r.attack };
+        if (r.attack) weapon = { name: btn.dataset.recipe, attack: r.attack, type: btn.dataset.recipe };
+        if (r.heal) healthPotions++;
         if (btn.dataset.recipe === '绷带') health = Math.min(100, health + 30);
+        if (btn.dataset.recipe === '血瓶') health = Math.min(100, health + 50);
         updateInventoryUI();
       });
       btn.addEventListener('touchstart', e => {
