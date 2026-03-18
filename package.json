@@ -1,0 +1,16 @@
+{
+  "name": "zombie-survival",
+  "version": "1.0.0",
+  "description": "2D Multiplayer Zombie Survival Game",
+  "scripts": {
+    "dev": "concurrently \"npm run client\" \"npm run server\"",
+    "client": "cd client && npm run dev",
+    "server": "cd server && npm run dev",
+    "build": "npm run build:client && npm run build:server",
+    "start": "NODE_ENV=production node server/dist/index.js"
+  },
+  "workspaces": [
+    "client",
+    "server"
+  ]
+}
