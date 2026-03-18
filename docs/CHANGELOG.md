@@ -6,6 +6,21 @@
 
 ---
 
+## [0.2.0] - 2026-03-18
+
+### 新增
+- 用户系统 (feature-user-system.md)
+  - 用户注册/登录API
+  - JWT认证中间件
+  - 玩家数据实体 (Player)
+  - 密码加密 (bcrypt)
+
+### 文档
+- 功能开发模板 (docs/features/TEMPLATE.md)
+- 用户系统功能文档 (docs/features/feature-user-system.md)
+
+---
+
 ## [0.1.0] - 2026-03-18
 
 ### 新增
