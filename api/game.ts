@@ -297,7 +297,7 @@ export default function handler(req: any, res: any) {
         type: buildingType,
         x: x || 1000,
         y: y || 1000,
-        health: buildingType === 'turret' || buildingType === 'wall_stone' || buildingType === 'wall_stone' ? 100 : buildingType === 'wall_stone' ? 300 : 100,
+        health: buildingType === 'turret' || buildingType === 'wall_stone' || buildingType === 'wall_stone' || buildingType === 'wall_stone' ? 100 : buildingType === 'wall_stone' ? 300 : 100,
         cooldown: 0
       });
       
