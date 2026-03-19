@@ -219,7 +219,7 @@ export default function handler(req: any, res: any) {
     }
     
     return res.json({
-      tick: if (gameState) gameState.tick++,
+      tick: gameState.tick++,
       phase: gameState.phase,
       dayTime: gameState.dayTime,
       dayNumber: gameState.dayNumber,
