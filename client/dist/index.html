@@ -188,6 +188,7 @@
       <span id="time">12:00</span>
       <span id="phase">☀️</span>
       <span id="wave">🧟 0</span>
+      <span id="announce" style="color:#fbbf24;font-weight:bold;"></span>
     </div>
     
     <div id="inventory" class="hidden">
@@ -392,6 +393,15 @@
     function render() {
       const W = canvas.width;
       const H = canvas.height;
+      
+      // 显示公告
+      if (gameState) {
+        let announceText = '';
+        if (gameState.phase === 'twilight') announceText = '⚠️ 黄昏来临，僵尸即将出没！';
+        else if (gameState.phase === 'night' && gameState.wave > 0) announceText = '🧟 第' + gameState.wave + '波僵尸来袭！';
+        else if (gameState.phase === 'day' && gameState.wave > 0) announceText = '☀️ 白天到了，安全了！';
+        document.getElementById('announce').textContent = announceText;
+      }
       
       ctx.fillStyle = '#1a1a2e';
       ctx.fillRect(0, 0, W, H);
