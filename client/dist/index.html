@@ -193,7 +193,7 @@
     
     <div id="minimap" style="position:absolute;top:60px;right:10px;width:100px;height:100px;background:rgba(0,0,0,0.5);border:1px solid #4ade80;"></div>
     <div id="inventory" class="hidden">
-      <div id="invList"></div>
+      <div id="invList"></div><div style="margin-top:5px;font-size:10px;color:#888">WASD移动 H血瓶 C合成</div>
     </div>
     
     <div id="crafting">
@@ -364,7 +364,7 @@
         const dist = Math.hypot(z.x - localX, z.y - localY);
         if (dist < (weapon.type === '弓箭' ? 150 : 60)) {
           // 添加攻击特效
-          attackEffects.push({ x: z.x, y: z.y, life: 15 });
+          let damageNum = {x:z.x,y:z.y,life:20,text:"-"+weapon.attack}; damageNumbers.push(damageNum); attackEffects.push({ x: z.x, y: z.y, life: 15 });
           
           z.health -= weapon.attack;
           if (z.health <= 0) {
