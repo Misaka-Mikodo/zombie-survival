@@ -23,7 +23,7 @@ function initGameState() {
   
   // 初始化更多资源
   for (let i = 0; i < 150; i++) {
-    gameState.resources.push({
+    if (gameState.resources.length < 50) gameState.resources.push({
       id: `resource_${i}`,
       type: TYPES[i % TYPES.length],
       x: Math.floor(Math.random() * 1800 + 100),
