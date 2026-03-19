@@ -22,7 +22,7 @@ function initGameState() {
   const TYPES = ['wood', 'stone', 'metal', 'food', 'herb', 'gold', 'diamond'];
   
   // 初始化更多资源
-  for (let i = 0; i < 150; i++) {
+  for (let i = 0; i < 250; i++) {
     if (gameState.resources.length < 50) gameState.resources.push({
       id: `resource_${i}`,
       type: TYPES[i % TYPES.length],
@@ -297,7 +297,7 @@ export default function handler(req: any, res: any) {
         type: buildingType,
         x: x || 1000,
         y: y || 1000,
-        health: buildingType === 'turret' ? 100 : buildingType === 'wall_stone' ? 300 : 100,
+        health: buildingType === 'turret' || buildingType === 'wall_stone' ? 100 : buildingType === 'wall_stone' ? 300 : 100,
         cooldown: 0
       });
       
